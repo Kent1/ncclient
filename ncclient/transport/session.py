@@ -72,6 +72,7 @@ class Session(Thread):
 
         def ok_cb(id, capabilities):
             self._id = id
+            capabilities = [cap.replace('urn:ietf:params:xml:ns:netconf:', 'urn:ietf:params:netconf:') for cap in capabilities]
             self._server_capabilities = capabilities
             init_event.set()
 

@@ -490,7 +490,7 @@ class SSHSession(Session):
                                     in self._client_capabilities):
                                 self._parse10()
                             else:
-                                raise Exception
+                                raise Exception("Unsupported netconf protocol in server message")
                         else:
                             self._parse10()  # HELLO msg uses EOM markers.
                     else:
@@ -518,12 +518,12 @@ class SSHSession(Session):
                                     # send using v1.0 EOM markers
                                     data = "%s%s" % (data, MSG_DELIM)
                                 else:
-                                    raise Exception
+                                    raise Exception("Unsupported netconf protocol capability")
                             else:
                                 logger.debug(
                                     'HELLO msg was sent, but server \
                                     capabilities are still not known')
-                                raise Exception
+                                raise Exception("Server capabilities unknown at HELLO time")
                         # we publish only v1.0 support
                         else:
                             # send using v1.0 EOM markers
