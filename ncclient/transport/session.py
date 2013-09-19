@@ -23,6 +23,7 @@ from errors import TransportError
 import logging
 logger = logging.getLogger('ncclient.transport.session')
 
+
 class Session(Thread):
 
     "Base class for use by transport protocol implementations."
@@ -35,9 +36,9 @@ class Session(Thread):
         self.setName('session')
         self._q = Queue()
         self._client_capabilities = capabilities
-        self._server_capabilities = None # yet
-        self._id = None # session-id
-        self._connected = False # to be set/cleared by subclass implementation
+        self._server_capabilities = None  # yet
+        self._id = None  # session-id
+        self._connected = False  # to be set/cleared by subclass implementation
         logger.debug('%r created: client_capabilities=%r' %
                      (self, self._client_capabilities))
 
@@ -51,27 +52,29 @@ class Session(Thread):
             listeners = list(self._listeners)
         for l in listeners:
             logger.debug('dispatching message to %r: %s' % (l, raw))
-            l.callback(root, raw) # no try-except; fail loudly if you must!
-    
+            l.callback(root, raw)  # no try-except; fail loudly if you must!
+
     def _dispatch_error(self, err):
         with self._lock:
             listeners = list(self._listeners)
         for l in listeners:
             logger.debug('dispatching error to %r' % l)
-            try: # here we can be more considerate with catching exceptions
-                l.errback(err) 
+            try:  # here we can be more considerate with catching exceptions
+                l.errback(err)
             except Exception as e:
                 logger.warning('error dispatching to %r: %r' % (l, e))
 
     def _post_connect(self):
         "Greeting stuff"
         init_event = Event()
-        error = [None] # so that err_cb can bind error[0]. just how it is.
+        error = [None]  # so that err_cb can bind error[0]. just how it is.
         # callbacks
+
         def ok_cb(id, capabilities):
             self._id = id
             self._server_capabilities = capabilities
             init_event.set()
+
         def err_cb(err):
             error[0] = err
             init_event.set()
@@ -86,7 +89,7 @@ class Session(Thread):
         self.remove_listener(listener)
         if error[0]:
             raise error[0]
-        #if ':base:1.0' not in self.server_capabilities:
+        # if ':base:1.0' not in self.server_capabilities:
         #    raise MissingCapabilityError(':base:1.0')
         logger.info('initialized: session-id=%s | server_capabilities=%s' %
                     (self._id, self._server_capabilities))
@@ -124,10 +127,10 @@ class Session(Thread):
                 if isinstance(listener, cls):
                     return listener
 
-    def connect(self, *args, **kwds): # subclass implements
+    def connect(self, *args, **kwds):  # subclass implements
         raise NotImplementedError
 
-    def run(self): # subclass implements
+    def run(self):  # subclass implements
         raise NotImplementedError
 
     def send(self, message):
@@ -137,7 +140,7 @@ class Session(Thread):
         logger.debug('queueing %s' % message)
         self._q.put(message)
 
-    ### Properties
+    # Properties
 
     @property
     def connected(self):
@@ -156,7 +159,8 @@ class Session(Thread):
 
     @property
     def id(self):
-        """A string representing the `session-id`. If the session has not been initialized it will be `None`"""
+        """A string representing the `session-id`. If the session has not been
+        initialized it will be `None`"""
         return self._id
 
 
@@ -170,9 +174,13 @@ class SessionListener(object):
     """
 
     def callback(self, root, raw):
-        """Called when a new XML document is received. The *root* argument allows the callback to determine whether it wants to further process the document.
+        """Called when a new XML document is received. The *root* argument
+        allows the callback to determine whether it wants to further process
+        the document.
 
-        Here, *root* is a tuple of *(tag, attributes)* where *tag* is the qualified name of the root element and *attributes* is a dictionary of its attributes (also qualified names).
+        Here, *root* is a tuple of *(tag, attributes)* where *tag* is the
+        qualified name of the root element and *attributes* is a dictionary of
+        its attributes (also qualified names).
 
         *raw* will contain the XML document as a string.
         """
@@ -210,7 +218,9 @@ class HelloHandler(SessionListener):
         "Given a list of capability URI's returns <hello> message XML string"
         hello = new_ele("hello")
         caps = sub_ele(hello, "capabilities")
-        def fun(uri): sub_ele(caps, "capability").text = uri
+
+        def fun(uri):
+            sub_ele(caps, "capability").text = uri
         map(fun, capabilities)
         return to_xml(hello)
 
@@ -222,7 +232,7 @@ class HelloHandler(SessionListener):
         for child in root.getchildren():
             if child.tag == qualify("session-id") or child.tag == "session-id":
                 sid = child.text
-            elif child.tag == qualify("capabilities") or child.tag == "capabilities" :
+            elif child.tag == qualify("capabilities") or child.tag == "capabilities":
                 for cap in child.getchildren():
                     if cap.tag == qualify("capability") or cap.tag == "capability":
                         capabilities.append(cap.text)

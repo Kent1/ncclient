@@ -26,8 +26,10 @@ logger = logging.getLogger("ncclient.operations.rpc")
 
 class RPCError(OperationError):
 
-    "Represents an `rpc-error`. It is a type of :exc:`OperationError` and can be raised as such."
-    
+    """Represents an `rpc-error`. It is a type of :exc:`OperationError` and can
+    be raised as such.
+    """
+
     tag_to_attr = {
         qualify("error-type"): "_type",
         qualify("error-tag"): "_tag",
@@ -36,7 +38,7 @@ class RPCError(OperationError):
         qualify("error-path"): "_path",
         qualify("error-message"): "_message"
     }
-    
+
     def __init__(self, raw):
         self._raw = raw
         for attr in RPCError.tag_to_attr.values():
@@ -44,45 +46,48 @@ class RPCError(OperationError):
         for subele in raw:
             attr = RPCError.tag_to_attr.get(subele.tag, None)
             if attr is not None:
-                setattr(self, attr, subele.text if attr != "_info" else to_xml(subele) )
+                setattr(
+                    (self, attr, subele.text if attr != "_info"
+                        else to_xml(subele)))
         if self.message is not None:
             OperationError.__init__(self, self.message)
         else:
             OperationError.__init__(self, self.to_dict())
-    
+
     def to_dict(self):
-        return dict([ (attr[1:], getattr(self, attr)) for attr in RPCError.tag_to_attr.values() ])
-    
+        return dict([((attr[1:], getattr(self, attr))
+                    for attr in RPCError.tag_to_attr.values())])
+
     @property
     def xml(self):
         "The `rpc-error` element as returned in XML."
         return self._raw
-    
+
     @property
     def type(self):
         "The contents of the `error-type` element."
         return self._type
-    
+
     @property
     def tag(self):
         "The contents of the `error-tag` element."
         return self._tag
-    
+
     @property
     def severity(self):
         "The contents of the `error-severity` element."
         return self._severity
-    
+
     @property
     def path(self):
         "The contents of the `error-path` element if present or `None`."
         return self._path
-    
+
     @property
     def message(self):
         "The contents of the `error-message` element if present or `None`."
         return self._message
-    
+
     @property
     def info(self):
         "XML string or `None`; representing the `error-info` element."
@@ -91,16 +96,20 @@ class RPCError(OperationError):
 
 class RPCReply:
 
-    """Represents an *rpc-reply*. Only concerns itself with whether the operation was successful.
+    """Represents an *rpc-reply*. Only concerns itself with whether the
+    operation was successful.
 
     .. note::
-        If the reply has not yet been parsed there is an implicit, one-time parsing overhead to
-        accessing some of the attributes defined by this class.
+        If the reply has not yet been parsed there is an implicit, one-time
+        parsing overhead to accessing some of the attributes defined by this
+        class.
     """
-    
+
     ERROR_CLS = RPCError
-    "Subclasses can specify a different error class, but it should be a subclass of `RPCError`."
-    
+    """Subclasses can specify a different error class, but it should be a
+    subclass of `RPCError`.
+    """
+
     def __init__(self, raw):
         self._raw = raw
         self._parsed = False
@@ -109,12 +118,14 @@ class RPCReply:
 
     def __repr__(self):
         return self._raw
-    
+
     def parse(self):
         "Parses the *rpc-reply*."
-        if self._parsed: return
-        root = self._root = to_ele(self._raw) # The <rpc-reply> element
-        # Per RFC 4741 an <ok/> tag is sent when there are no errors or warnings
+        if self._parsed:
+            return
+        root = self._root = to_ele(self._raw)  # The <rpc-reply> element
+        # Per RFC 4741 an <ok/> tag is sent when there are no errors or
+        # warnings
         ok = root.find(qualify("ok"))
         if ok is None:
             # Create RPCError objects from <rpc-error> elements
@@ -129,37 +140,41 @@ class RPCReply:
     def _parsing_hook(self, root):
         "No-op by default. Gets passed the *root* element for the reply."
         pass
-    
+
     @property
     def xml(self):
         "*rpc-reply* element as returned."
         return self._raw
-    
+
     @property
     def ok(self):
         "Boolean value indicating if there were no errors."
-        return not self.errors # empty list => false
-    
+        return not self.errors  # empty list => false
+
     @property
     def error(self):
-        "Returns the first :class:`RPCError` and `None` if there were no errors."
+        """Returns the first :class:`RPCError` and `None` if there were no
+        errors.
+        """
         self.parse()
         if self._errors:
             return self._errors[0]
         else:
             return None
-    
+
     @property
     def errors(self):
-        "List of `RPCError` objects. Will be empty if there were no *rpc-error* elements in reply."
+        """List of `RPCError` objects. Will be empty if there were no *rpc-
+        error* elements in reply.
+        """
         self.parse()
         return self._errors
 
 
-class RPCReplyListener(SessionListener): # internal use
-    
+class RPCReplyListener(SessionListener):  # internal use
+
     creation_lock = Lock()
-    
+
     # one instance per session -- maybe there is a better way??
     def __new__(cls, session):
         with RPCReplyListener.creation_lock:
@@ -168,7 +183,7 @@ class RPCReplyListener(SessionListener): # internal use
                 instance = object.__new__(cls)
                 instance._lock = Lock()
                 instance._id2rpc = {}
-                #instance._pipelined = session.can_pipeline
+                # instance._pipelined = session.can_pipeline
                 session.add_listener(instance)
             return instance
 
@@ -180,24 +195,26 @@ class RPCReplyListener(SessionListener): # internal use
         tag, attrs = root
         if tag != qualify("rpc-reply"):
             return
-        for key in attrs: # in the <rpc-reply> attributes
-            if key == "message-id": # if we found msgid attr
-                id = attrs[key] # get the msgid
+        for key in attrs:  # in the <rpc-reply> attributes
+            if key == "message-id":  # if we found msgid attr
+                id = attrs[key]  # get the msgid
                 with self._lock:
                     try:
-                        rpc = self._id2rpc[id] # the corresponding rpc
+                        rpc = self._id2rpc[id]  # the corresponding rpc
                         logger.debug("Delivering to %r" % rpc)
                         rpc.deliver_reply(raw)
                     except KeyError:
                         raise OperationError("Unknown 'message-id': %s", id)
                     # no catching other exceptions, fail loudly if must
                     else:
-                        # if no error delivering, can del the reference to the RPC
+                        # if no error delivering, can del the reference to the
+                        # RPC
                         del self._id2rpc[id]
                         break
         else:
-            raise OperationError("Could not find 'message-id' attribute in <rpc-reply>")
-    
+            raise OperationError(
+                "Could not find 'message-id' attribute in <rpc-reply>")
+
     def errback(self, err):
         try:
             for rpc in self._id2rpc.values():
@@ -219,24 +236,32 @@ class RaiseMode(object):
 
 
 class RPC(object):
-    
-    """Base class for all operations, directly corresponding to *rpc* requests. Handles making the request, and taking delivery of the reply."""
+
+    """Base class for all operations, directly corresponding to *rpc*
+    requests. Handles making the request, and taking delivery of the reply."""
 
     DEPENDS = []
-    """Subclasses can specify their dependencies on capabilities as a list of URI's or abbreviated names, e.g. ':writable-running'. These are verified at the time of instantiation. If the capability is not available, :exc:`MissingCapabilityError` is raised."""
-    
+    """Subclasses can specify their dependencies on capabilities as a list of
+    URI's or abbreviated names, e.g. ':writable-running'. These are verified
+    at the time of instantiation. If the capability is not available,
+    :exc:`MissingCapabilityError` is raised."""
+
     REPLY_CLS = RPCReply
-    "By default :class:`RPCReply`. Subclasses can specify a :class:`RPCReply` subclass."
-    
-    def __init__(self, session, async=False, timeout=30, raise_mode=RaiseMode.NONE):
+    """By default :class:`RPCReply`. Subclasses can specify a :class:`RPCReply`
+    subclass."""
+
+    def __init__(self, session, async=False, timeout=30,
+                 raise_mode=RaiseMode.NONE):
         """
         *session* is the :class:`~ncclient.transport.Session` instance
 
-        *async* specifies whether the request is to be made asynchronously, see :attr:`is_async`
+        *async* specifies whether the request is to be made asynchronously,
+        see :attr:`is_async`
 
         *timeout* is the timeout for a synchronous request, see :attr:`timeout`
 
-        *raise_mode* specifies the exception raising mode, see :attr:`raise_mode`
+        *raise_mode* specifies the exception raising mode, see
+        :attr:`raise_mode`
         """
         self._session = session
         try:
@@ -247,13 +272,15 @@ class RPC(object):
         self._async = async
         self._timeout = timeout
         self._raise_mode = raise_mode
-        self._id = uuid1().urn # Keeps things simple instead of having a class attr with running ID that has to be locked
+        self._id = uuid1().urn
+        # Keeps things simple instead of having a class attr with running ID
+        # that has to be locked
         self._listener = RPCReplyListener(session)
         self._listener.register(self._id, self)
         self._reply = None
         self._error = None
         self._event = Event()
-    
+
     def _wrap(self, subele):
         # internal use
         ele = new_ele("rpc", {"message-id": self._id})
@@ -261,13 +288,19 @@ class RPC(object):
         return to_xml(ele)
 
     def _request(self, op):
-        """Implementations of :meth:`request` call this method to send the request and process the reply.
-        
-        In synchronous mode, blocks until the reply is received and returns :class:`RPCReply`. Depending on the :attr:`raise_mode` a `rpc-error` element in the reply may lead to an :exc:`RPCError` exception.
-        
-        In asynchronous mode, returns immediately, returning `self`. The :attr:`event` attribute will be set when the reply has been received (see :attr:`reply`) or an error occured (see :attr:`error`).
-        
-        *op* is the operation to be requested as an :class:`~xml.etree.ElementTree.Element`
+        """Implementations of :meth:`request` call this method to send the
+        request and process the reply.
+
+        In synchronous mode, blocks until the reply is received and returns
+        :class:`RPCReply`. Depending on the :attr:`raise_mode` a `rpc-error`
+        element in the reply may lead to an :exc:`RPCError` exception.
+
+        In asynchronous mode, returns immediately, returning `self`. The
+        :attr:`event` attribute will be set when the reply has been received
+        (see :attr:`reply`) or an error occured (see :attr:`error`).
+
+        *op* is the operation to be requested as an
+        :class:`~xml.etree.ElementTree.Element`
         """
         logger.info('Requesting %r' % self.__class__.__name__)
         req = self._wrap(op)
@@ -276,7 +309,8 @@ class RPC(object):
             logger.debug('Async request, returning %r', self)
             return self
         else:
-            logger.debug('Sync request, will wait for timeout=%r' % self._timeout)
+            logger.debug(
+                'Sync request, will wait for timeout=%r' % self._timeout)
             self._event.wait(self._timeout)
             if self._event.isSet():
                 if self._error:
@@ -287,25 +321,28 @@ class RPC(object):
                     # <rpc-error>'s [ RPCError ]
                     if self._raise_mode == RaiseMode.ALL:
                         raise self._reply.error
-                    elif (self._raise_mode == RaiseMode.ERRORS and self._reply.error.type == "error"):
+                    elif (self._raise_mode == RaiseMode.ERRORS and
+                          self._reply.error.type == "error"):
                         raise self._reply.error
                 return self._reply
             else:
                 raise TimeoutExpiredError
 
     def request(self):
-        """Subclasses must implement this method. Typically only the request needs to be built as an
-        :class:`~xml.etree.ElementTree.Element` and everything else can be handed off to
-        :meth:`_request`."""
+        """Subclasses must implement this method. Typically only the request
+        needs to be built as an :class:`~xml.etree.ElementTree.Element` and
+        everything else can be handed off to :meth:`_request`."""
         pass
-    
+
     def _assert(self, capability):
-        """Subclasses can use this method to verify that a capability is available with the NETCONF
-        server, before making a request that requires it. A :exc:`MissingCapabilityError` will be
-        raised if the capability is not available."""
+        """Subclasses can use this method to verify that a capability is
+        available with the NETCONF server, before making a request that
+        requires it. A :exc:`MissingCapabilityError` will be raised if the
+        capability is not available."""
         if capability not in self._session.server_capabilities:
-            raise MissingCapabilityError('Server does not support [%s]' % capability)
-    
+            raise MissingCapabilityError(
+                'Server does not support [%s]' % capability)
+
     def deliver_reply(self, raw):
         # internal use
         self._reply = self.REPLY_CLS(raw)
@@ -315,27 +352,28 @@ class RPC(object):
         # internal use
         self._error = err
         self._event.set()
-    
+
     @property
     def reply(self):
         ":class:`RPCReply` element if reply has been received or `None`"
         return self._reply
-    
+
     @property
     def error(self):
         """:exc:`Exception` type if an error occured or `None`.
-        
+
         .. note::
-            This represents an error which prevented a reply from being received. An *rpc-error*
-            does not fall in that category -- see `RPCReply` for that.
+            This represents an error which prevented a reply from being
+            received. An *rpc-error* does not fall in that category -- see
+            `RPCReply` for that.
         """
         return self._error
-    
+
     @property
     def id(self):
         "The *message-id* for this RPC."
         return self._id
-    
+
     @property
     def session(self):
         "The `~ncclient.transport.Session` object associated with this RPC."
@@ -343,15 +381,16 @@ class RPC(object):
 
     @property
     def event(self):
-        """:class:`~threading.Event` that is set when reply has been received or when an error preventing
-        delivery of the reply occurs.
+        """:class:`~threading.Event` that is set when reply has been received
+        or when an error preventing delivery of the reply occurs.
         """
         return self._event
 
     def __set_async(self, async=True):
         self._async = async
         if async and not session.can_pipeline:
-            raise UserWarning('Asynchronous mode not supported for this device/session')
+            raise UserWarning(
+                'Asynchronous mode not supported for this device/session')
 
     def __set_raise_mode(self, mode):
         assert(choice in ("all", "errors", "none"))
@@ -360,14 +399,19 @@ class RPC(object):
     def __set_timeout(self, timeout):
         self._timeout = timeout
 
-    raise_mode = property(fget=lambda self: self._raise_mode, fset=__set_raise_mode)
-    """Depending on this exception raising mode, an `rpc-error` in the reply may be raised as an :exc:`RPCError` exception. Valid values are the constants defined in :class:`RaiseMode`. """
-    
+    raise_mode = property(
+        fget=lambda self: self._raise_mode, fset=__set_raise_mode)
+    """Depending on this exception raising mode, an `rpc-error` in the reply
+    may be raised as an :exc:`RPCError` exception. Valid values are the
+    constants defined in :class:`RaiseMode`. """
+
     is_async = property(fget=lambda self: self._async, fset=__set_async)
-    """Specifies whether this RPC will be / was requested asynchronously. By default RPC's are synchronous."""
-    
+    """Specifies whether this RPC will be / was requested asynchronously. By
+    default RPC's are synchronous."""
+
     timeout = property(fget=lambda self: self._timeout, fset=__set_timeout)
-    """Timeout in seconds for synchronous waiting defining how long the RPC request will block on a reply before raising :exc:`TimeoutExpiredError`.
-    
+    """Timeout in seconds for synchronous waiting defining how long the RPC
+    request will block on a reply before raising :exc:`TimeoutExpiredError`.
+
     Irrelevant for asynchronous usage.
     """

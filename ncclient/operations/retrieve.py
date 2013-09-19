@@ -18,6 +18,7 @@ from ncclient.xml_ import *
 
 import util
 
+
 class GetReply(RPCReply):
 
     """Adds attributes for the *data* element to `RPCReply`."""
@@ -26,7 +27,7 @@ class GetReply(RPCReply):
         self._data = None
         if not self._errors:
             self._data = root.find(qualify("data"))
-    
+
     @property
     def data_ele(self):
         "*data* element as an :class:`~xml.etree.ElementTree.Element`"
@@ -40,7 +41,7 @@ class GetReply(RPCReply):
         if not self._parsed:
             self.parse()
         return to_xml(self._data)
-    
+
     data = data_ele
     "Same as :attr:`data_ele`"
 
@@ -55,7 +56,8 @@ class Get(RPC):
     def request(self, filter=None):
         """Retrieve running configuration and device state information.
 
-        *filter* specifies the portion of the configuration to retrieve (by default entire configuration is retrieved)
+        *filter* specifies the portion of the configuration to retrieve (by
+        default entire configuration is retrieved)
 
         :seealso: :ref:`filter_params`
         """
@@ -77,7 +79,8 @@ class GetConfig(RPC):
 
         *source* name of the configuration datastore being queried
 
-        *filter* specifies the portion of the configuration to retrieve (by default entire configuration is retrieved)
+        *filter* specifies the portion of the configuration to retrieve (by
+        default entire configuration is retrieved)
 
         :seealso: :ref:`filter_params`"""
         node = new_ele("get-config")
@@ -85,6 +88,7 @@ class GetConfig(RPC):
         if filter is not None:
             node.append(util.build_filter(filter))
         return self._request(node)
+
 
 class Dispatch(RPC):
 
@@ -95,11 +99,13 @@ class Dispatch(RPC):
 
     def request(self, rpc_command, source=None, filter=None):
         """
-        *rpc_command* specifies rpc command to be dispatched either in plain text or in xml element format (depending on command)
+        *rpc_command* specifies rpc command to be dispatched either in plain
+        text or in xml element format (depending on command)
 
         *source* name of the configuration datastore being queried
 
-        *filter* specifies the portion of the configuration to retrieve (by default entire configuration is retrieved)
+        *filter* specifies the portion of the configuration to retrieve (by
+        default entire configuration is retrieved)
 
         :seealso: :ref:`filter_params`
 
@@ -124,4 +130,3 @@ class Dispatch(RPC):
         if filter is not None:
             node.append(util.build_filter(filter))
         return self._request(node)
-

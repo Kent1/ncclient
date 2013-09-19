@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 def _abbreviate(uri):
     if uri.startswith("urn:ietf:params") and ":netconf:" in uri:
         splitted = uri.split(":")
@@ -20,22 +21,26 @@ def _abbreviate(uri):
                 name, version = splitted[7], splitted[8]
             else:
                 name, version = splitted[5], splitted[6]
-            return [ ":" + name, ":" + name + ":" + version ]
+            return [":" + name, ":" + name + ":" + version]
         elif ":base:" in uri:
             if uri.startswith("urn:ietf:params:xml:ns:netconf"):
-                return [ ":base", ":base" + ":" + splitted[7] ]
+                return [":base", ":base" + ":" + splitted[7]]
             else:
-                return [ ":base", ":base" + ":" + splitted[5] ]
+                return [":base", ":base" + ":" + splitted[5]]
     return []
 
+
 def schemes(url_uri):
-    "Given a URI that has a *scheme* query string (i.e. `:url` capability URI), will return a list of supported schemes."
+    """Given a URI that has a *scheme* query string (i.e. `:url` capability
+    URI), will return a list of supported schemes."""
     return url_uri.partition("?scheme=")[2].split(",")
+
 
 class Capabilities:
 
-    "Represents the set of capabilities available to a NETCONF client or server. It is initialized with a list of capability URI's."
-    
+    """Represents the set of capabilities available to a NETCONF client or
+    server. It is initialized with a list of capability URI's."""
+
     def __init__(self, capabilities):
         self._dict = {}
         for uri in capabilities:

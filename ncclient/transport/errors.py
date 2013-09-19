@@ -14,11 +14,14 @@
 
 from ncclient import NCClientError
 
+
 class TransportError(NCClientError):
     pass
 
+
 class AuthenticationError(TransportError):
     pass
+
 
 class SessionCloseError(TransportError):
 
@@ -30,12 +33,15 @@ class SessionCloseError(TransportError):
             msg += ' OUT_BUFFER: `%s`' % out_buf
         SSHError.__init__(self, msg)
 
+
 class SSHError(TransportError):
     pass
+
 
 class SSHUnknownHostError(SSHError):
 
     def __init__(self, host, fingerprint):
-        SSHError.__init__(self, 'Unknown host key [%s] for [%s]' % (fingerprint, host))
+        SSHError.__init__(
+            self, 'Unknown host key [%s] for [%s]' % (fingerprint, host))
         self.host = host
         self.fingerprint = fingerprint

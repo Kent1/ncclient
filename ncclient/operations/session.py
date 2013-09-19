@@ -18,12 +18,15 @@ from ncclient.xml_ import *
 
 from rpc import RPC
 
+
 class CloseSession(RPC):
 
     "`close-session` RPC. The connection to NETCONF server is also closed."
 
     def request(self):
-        "Request graceful termination of the NETCONF session, and also close the transport."
+        """"Request graceful termination of the NETCONF session, and also close
+        the transport.
+        """
         try:
             return self._request(new_ele("close-session"))
         finally:

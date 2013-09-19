@@ -20,14 +20,16 @@ from rpc import RPC
 
 PC_URN = "urn:liberouter:params:xml:ns:netconf:power-control:1.0"
 
+
 class PoweroffMachine(RPC):
 
     "*poweroff-machine* RPC (flowmon)"
 
     DEPENDS = ["urn:liberouter:param:netconf:capability:power-control:1.0"]
-    
+
     def request(self):
         return self._request(new_ele(qualify("poweroff-machine", PC_URN)))
+
 
 class RebootMachine(RPC):
 

@@ -18,12 +18,14 @@ from ncclient.xml_ import *
 
 from rpc import RaiseMode, RPC
 
-# TODO: parse session-id from a lock-denied error, and raise a tailored exception?
+# TODO: parse session-id from a lock-denied error, and raise a tailored
+# exception?
+
 
 class Lock(RPC):
 
     "`lock` RPC"
-    
+
     def request(self, target):
         """Allows the client to lock the configuration system of a device.
 
@@ -37,9 +39,10 @@ class Lock(RPC):
 class Unlock(RPC):
 
     "`unlock` RPC"
-    
+
     def request(self, target):
-        """Release a configuration lock, previously obtained with the lock operation.
+        """Release a configuration lock, previously obtained with the lock
+        operation.
 
         *target* is the name of the configuration datastore to unlock
         """
@@ -54,7 +57,8 @@ class LockContext:
 
     Any `rpc-error` will be raised as an exception.
 
-    Initialise with (:class:`Session <ncclient.transport.Session>`) instance and lock target.
+    Initialise with (:class:`Session <ncclient.transport.Session>`) instance
+    and lock target.
     """
 
     def __init__(self, session, target):

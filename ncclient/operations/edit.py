@@ -24,23 +24,32 @@ logger = logging.getLogger("ncclient.operations.edit")
 
 "Operations related to changing device configuration"
 
+
 class EditConfig(RPC):
+
     "`edit-config` RPC"
 
-    def request(self, target, config, default_operation=None, test_option=None, error_option=None):
-        """Loads all or part of the specified *config* to the *target* configuration datastore.
+    def request(self, target, config, default_operation=None,
+                test_option=None, error_option=None):
+        """Loads all or part of the specified *config* to the *target*
+        configuration datastore.
 
         *target* is the name of the configuration datastore being edited
 
-        *config* is the configuration, which must be rooted in the `config` element. It can be specified either as a string or an :class:`~xml.etree.ElementTree.Element`.
+        *config* is the configuration, which must be rooted in the `config`
+        element. It can be specified either as a string or an
+        :class:`~xml.etree.ElementTree.Element`.
 
-        *default_operation* if specified must be one of { `"merge"`, `"replace"`, or `"none"` }
+        *default_operation* if specified must be one of { `"merge"`,
+        `"replace"`, or `"none"` }
 
         *test_option* if specified must be one of { `"test_then_set"`, `"set"` }
 
-        *error_option* if specified must be one of { `"stop-on-error"`, `"continue-on-error"`, `"rollback-on-error"` }
+        *error_option* if specified must be one of { `"stop-on-error"`,
+        `"continue-on-error"`, `"rollback-on-error"` }
 
-        The `"rollback-on-error"` *error_option* depends on the `:rollback-on-error` capability.
+        The `"rollback-on-error"` *error_option* depends on the `:rollback-on-
+        error` capability.
         """
         node = new_ele("edit-config")
         node.append(util.datastore_or_url("target", target, self._assert))
@@ -59,6 +68,7 @@ class EditConfig(RPC):
 
 
 class DeleteConfig(RPC):
+
     "`delete-config` RPC"
 
     def request(self, target):
@@ -73,15 +83,19 @@ class DeleteConfig(RPC):
 
 
 class CopyConfig(RPC):
+
     "`copy-config` RPC"
 
     def request(self, source, target):
-        """Create or replace an entire configuration datastore with the contents of another complete
-        configuration datastore.
+        """Create or replace an entire configuration datastore with the
+        contents of another complete configuration datastore.
 
-        *source* is the name of the configuration datastore to use as the source of the copy operation or `config` element containing the configuration subtree to copy
+        *source* is the name of the configuration datastore to use as the
+        source of the copy operation or `config` element containing the
+        configuration subtree to copy
 
-        *target* is the name of the configuration datastore to use as the destination of the copy operation
+        *target* is the name of the configuration datastore to use as the
+        destination of the copy operation
 
         :seealso: :ref:`srctarget_params`"""
         node = new_ele("copy-config")
@@ -91,6 +105,7 @@ class CopyConfig(RPC):
 
 
 class Validate(RPC):
+
     "`validate` RPC. Depends on the `:validate` capability."
 
     DEPENDS = [':validate']
@@ -98,7 +113,8 @@ class Validate(RPC):
     def request(self, source):
         """Validate the contents of the specified configuration.
 
-        *source* is the name of the configuration datastore being validated or `config` element containing the configuration subtree to be validated
+        *source* is the name of the configuration datastore being validated or
+        `config` element containing the configuration subtree to be validated
 
         :seealso: :ref:`srctarget_params`"""
         node = new_ele("validate")
@@ -112,14 +128,20 @@ class Validate(RPC):
 
 
 class Commit(RPC):
-    "`commit` RPC. Depends on the `:candidate` capability, and the `:confirmed-commit`."
+    """`commit` RPC. Depends on the `:candidate` capability, and the
+    `:confirmed-commit`."""
 
     DEPENDS = [':candidate']
 
     def request(self, confirmed=False, timeout=None):
-        """Commit the candidate configuration as the device's new current configuration. Depends on the `:candidate` capability.
+        """Commit the candidate configuration as the device's new current
+        configuration. Depends on the `:candidate` capability.
 
-        A confirmed commit (i.e. if *confirmed* is `True`) is reverted if there is no followup commit within the *timeout* interval. If no timeout is specified the confirm timeout defaults to 600 seconds (10 minutes). A confirming commit may have the *confirmed* parameter but this is not required. Depends on the `:confirmed-commit` capability.
+        A confirmed commit (i.e. if *confirmed* is `True`) is reverted if
+        there is no followup commit within the *timeout* interval. If no
+        timeout is specified the confirm timeout defaults to 600 seconds (10
+        minutes). A confirming commit may have the *confirmed* parameter but
+        this is not required. Depends on the `:confirmed-commit` capability.
 
         *confirmed* whether this is a confirmed commit
 
@@ -134,10 +156,12 @@ class Commit(RPC):
 
 
 class DiscardChanges(RPC):
+
     "`discard-changes` RPC. Depends on the `:candidate` capability."
 
     DEPENDS = [":candidate"]
 
     def request(self):
-        """Revert the candidate configuration to the currently running configuration. Any uncommitted changes are discarded."""
+        """Revert the candidate configuration to the currently running
+        configuration. Any uncommitted changes are discarded."""
         return self._request(new_ele("discard-changes"))

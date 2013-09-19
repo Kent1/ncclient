@@ -37,29 +37,35 @@ END_DELIM = '\n##\n'
 
 TICK = 0.1
 
+
 def default_unknown_host_cb(host, fingerprint):
-    """An unknown host callback returns `True` if it finds the key acceptable, and `False` if not.
+    """An unknown host callback returns `True` if it finds the key acceptable,
+    and `False` if not.
 
-    This default callback always returns `False`, which would lead to :meth:`connect` raising a :exc:`SSHUnknownHost` exception.
+    This default callback always returns `False`, which would lead to
+    :meth:`connect` raising a :exc:`SSHUnknownHost` exception.
 
-    Supply another valid callback if you need to verify the host key programatically.
+    Supply another valid callback if you need to verify the host key
+    programatically.
 
     *host* is the hostname that needs to be verified
 
-    *fingerprint* is a hex string representing the host key fingerprint, colon-delimited e.g. `"4b:69:6c:72:6f:79:20:77:61:73:20:68:65:72:65:21"`
+    *fingerprint* is a hex string representing the host key fingerprint,
+    colon-delimited e.g. `"4b:69:6c:72:6f:79:20:77:61:73:20:68:65:72:65:21"`
     """
     return False
 
+
 def _colonify(fp):
     finga = fp[:2]
-    for idx  in range(2, len(fp), 2):
-        finga += ":" + fp[idx:idx+2]
+    for idx in range(2, len(fp), 2):
+        finga += ":" + fp[idx:idx + 2]
     return finga
+
 
 class SSHSession(Session):
 
     "Implements a :rfc:`4742` NETCONF session over SSH."
-
 
     def __init__(self, capabilities):
         Session.__init__(self, capabilities)
@@ -67,7 +73,7 @@ class SSHSession(Session):
         self._transport = None
         self._connected = False
         self._channel = None
-        self._buffer = StringIO() # for incoming data
+        self._buffer = StringIO()  # for incoming data
         # parsing-related, see _parse()
         self._parsing_state10 = 0
         self._parsing_pos10 = 0
@@ -79,7 +85,6 @@ class SSHSession(Session):
         self._message = []
 
     def _parse10(self):
-
         """Messages are delimited by MSG_DELIM. The buffer could have grown by
         a maximum of BUF_SIZE bytes everytime this method is called. Retains
         state across method calls and if a byte has been read it will not be
@@ -93,29 +98,30 @@ class SSHSession(Session):
         buf.seek(self._parsing_pos10)
         while True:
             x = buf.read(1)
-            if not x: # done reading
+            if not x:  # done reading
                 break
-            elif x == delim[expect]: # what we expected
-                expect += 1 # expect the next delim char
+            elif x == delim[expect]:  # what we expected
+                expect += 1  # expect the next delim char
             else:
                 expect = 0
                 continue
-            # loop till last delim char expected, break if other char encountered
+            # loop till last delim char expected, break if other char
+            # encountered
             for i in range(expect, n):
                 x = buf.read(1)
-                if not x: # done reading
+                if not x:  # done reading
                     break
-                if x == delim[expect]: # what we expected
-                    expect += 1 # expect the next delim char
+                if x == delim[expect]:  # what we expected
+                    expect += 1  # expect the next delim char
                 else:
-                    expect = 0 # reset
+                    expect = 0  # reset
                     break
-            else: # if we didn't break out of the loop, full delim was parsed
+            else:  # if we didn't break out of the loop, full delim was parsed
                 msg_till = buf.tell() - n
                 buf.seek(0)
                 logger.debug('parsed new message')
                 self._dispatch_message(buf.read(msg_till).strip())
-                buf.seek(n+1, os.SEEK_CUR)
+                buf.seek(n + 1, os.SEEK_CUR)
                 rest = buf.read()
                 buf = StringIO()
                 buf.write(rest)
@@ -127,13 +133,13 @@ class SSHSession(Session):
 
     def _parse11(self):
         logger.debug("parsing netconf v1.1")
-        message = self._message 
+        message = self._message
         expchunksize = self._expchunksize
         curchunksize = self._curchunksize
         idle, instart, inmsg, inbetween, inend = range(5)
         state = self._parsing_state11
         inendpos = self._inendpos
-        MAX_STARTCHUNK_SIZE = 10 # 4294967295
+        MAX_STARTCHUNK_SIZE = 10  # 4294967295
         pre = 'invalid base:1:1 frame'
         buf = self._buffer
         buf.seek(self._parsing_pos11)
@@ -141,50 +147,52 @@ class SSHSession(Session):
 
         while True:
             x = buf.read(1)
-            if not x: break # done reading
+            if not x:
+                break  # done reading
             logger.debug('x: %s', x)
             if state == idle:
                 if x == '\n':
                     state = instart
                     inendpos = 1
                 else:
-                    logger.debug('%s (%s: expect newline)'%(pre, state))
+                    logger.debug('%s (%s: expect newline)' % (pre, state))
                     raise Exception
             elif state == instart:
                 if inendpos == 1:
                     if x == '#':
                         inendpos += 1
                     else:
-                        logger.debug('%s (%s: expect "#")'%(pre, state))
+                        logger.debug('%s (%s: expect "#")' % (pre, state))
                         raise Exception
                 elif inendpos == 2:
                     if x.isdigit():
-                        inendpos += 1 # == 3 now #
+                        inendpos += 1  # == 3 now #
                         num.append(x)
                     else:
-                        logger.debug('%s (%s: expect digit)'%(pre, state))
+                        logger.debug('%s (%s: expect digit)' % (pre, state))
                         raise Exception
                 else:
                     if inendpos == MAX_STARTCHUNK_SIZE:
-                        logger.debug('%s (%s: no. too long)'%(pre, state))
+                        logger.debug('%s (%s: no. too long)' % (pre, state))
                         raise Exception
                     elif x == '\n':
                         num = ''.join(num)
-                        try: num = long(num)
+                        try:
+                            num = long(num)
                         except:
-                            logger.debug('%s (%s: invalid no.)'%(pre, state))
+                            logger.debug('%s (%s: invalid no.)' % (pre, state))
                             raise Exception
                         else:
                             state = inmsg
                             expchunksize = num
-                            logger.debug('response length: %d'%expchunksize)
+                            logger.debug('response length: %d' % expchunksize)
                             curchunksize = 0
                             inendpos += 1
                     elif x.isdigit():
-                        inendpos += 1 # > 3 now #
+                        inendpos += 1  # > 3 now #
                         num.append(x)
                     else:
-                        log.debug('%s (%s: expect digit)'%(pre, state))
+                        log.debug('%s (%s: expect digit)' % (pre, state))
                         raise Exception
             elif state == inmsg:
                 message.append(x)
@@ -194,24 +202,26 @@ class SSHSession(Session):
                     inendpos = 0
                     state = inbetween
                     message = ''.join(message)
-                    logger.debug('parsed new message: %s'%(message))
+                    logger.debug('parsed new message: %s' % (message))
             elif state == inbetween:
                 if inendpos == 0:
-                    if x == '\n': inendpos += 1
+                    if x == '\n':
+                        inendpos += 1
                     else:
-                        logger.debug('%s (%s: expect newline)'%(pre, state))
+                        logger.debug('%s (%s: expect newline)' % (pre, state))
                         raise Exception
                 elif inendpos == 1:
-                    if x == '#': inendpos += 1
+                    if x == '#':
+                        inendpos += 1
                     else:
-                        logger.debug('%s (%s: expect "#")'%(pre, state))
+                        logger.debug('%s (%s: expect "#")' % (pre, state))
                         raise Exception
                 else:
                     if x == '#':
-                        inendpos += 1 # == 3 now #
+                        inendpos += 1  # == 3 now #
                         state = inend
                     else:
-                        logger.debug('%s (%s: expect "#")'%(pre, state))
+                        logger.debug('%s (%s: expect "#")' % (pre, state))
                         raise Exception
             elif state == inend:
                 if inendpos == 3:
@@ -231,10 +241,10 @@ class SSHSession(Session):
                         inendpos = parsing_pos11 = 0
                         break
                     else:
-                        logger.debug('%s (%s: expect newline)'%(pre, state))
+                        logger.debug('%s (%s: expect newline)' % (pre, state))
                         raise Exception
             else:
-                logger.debug('%s (%s invalid state)'%(pre, state))
+                logger.debug('%s (%s invalid state)' % (pre, state))
                 raise Exception
 
         self._message = message
@@ -246,13 +256,12 @@ class SSHSession(Session):
         self._parsing_pos11 = self._buffer.tell()
         logger.debug('parse11 ending ...')
 
-
     def load_known_hosts(self, filename=None):
-
         """Load host keys from an openssh :file:`known_hosts`-style file. Can
         be called multiple times.
 
-        If *filename* is not specified, looks in the default locations i.e. :file:`~/.ssh/known_hosts` and :file:`~/ssh/known_hosts` for Windows.
+        If *filename* is not specified, looks in the default locations i.e.
+        :file:`~/.ssh/known_hosts` and :file:`~/ssh/known_hosts` for Windows.
         """
 
         if filename is None:
@@ -274,36 +283,48 @@ class SSHSession(Session):
             self._transport.close()
         self._connected = False
 
-    # REMEMBER to update transport.rst if sig. changes, since it is hardcoded there
-    def connect(self, host, port=830, timeout=None, unknown_host_cb=default_unknown_host_cb,
-                username=None, password=None, key_filename=None, allow_agent=True, look_for_keys=True):
-        """Connect via SSH and initialize the NETCONF session. First attempts the publickey authentication method and then password authentication.
+    # REMEMBER to update transport.rst if sig. changes, since it is hardcoded
+    # there
+    def connect(self, host, port=830, timeout=None,
+                unknown_host_cb=default_unknown_host_cb, username=None,
+                password=None, key_filename=None, allow_agent=True,
+                look_for_keys=True):
+        """Connect via SSH and initialize the NETCONF session. First attempts
+        the publickey authentication method and then password authentication.
 
-        To disable attempting publickey authentication altogether, call with *allow_agent* and *look_for_keys* as `False`.
+        To disable attempting publickey authentication altogether, call with
+        *allow_agent* and *look_for_keys* as `False`.
 
         *host* is the hostname or IP address to connect to
 
-        *port* is by default 830, but some devices use the default SSH port of 22 so this may need to be specified
+        *port* is by default 830, but some devices use the default SSH port of
+        22 so this may need to be specified
 
         *timeout* is an optional timeout for socket connect
 
-        *unknown_host_cb* is called when the server host key is not recognized. It takes two arguments, the hostname and the fingerprint (see the signature of :func:`default_unknown_host_cb`)
+        *unknown_host_cb* is called when the server host key is not
+        recognized. It takes two arguments, the hostname and the fingerprint
+        (see the signature of :func:`default_unknown_host_cb`)
 
         *username* is the username to use for SSH authentication
 
-        *password* is the password used if using password authentication, or the passphrase to use for unlocking keys that require it
+        *password* is the password used if using password authentication, or
+        the passphrase to use for unlocking keys that require it
 
-        *key_filename* is a filename where a the private key to be used can be found
+        *key_filename* is a filename where a the private key to be used can be
+        found
 
         *allow_agent* enables querying SSH agent (if found) for keys
 
-        *look_for_keys* enables looking in the usual locations for ssh keys (e.g. :file:`~/.ssh/id_*`)
+        *look_for_keys* enables looking in the usual locations for ssh keys
+        (e.g. :file:`~/.ssh/id_*`)
         """
         if username is None:
             username = getpass.getuser()
 
         sock = None
-        for res in socket.getaddrinfo(host, port, socket.AF_UNSPEC, socket.SOCK_STREAM):
+        for res in socket.getaddrinfo(host, port,
+                                      socket.AF_UNSPEC, socket.SOCK_STREAM):
             af, socktype, proto, canonname, sa = res
             try:
                 sock = socket.socket(af, socktype, proto)
@@ -339,26 +360,28 @@ class SSHSession(Session):
         if key_filename is None:
             key_filenames = []
         elif isinstance(key_filename, basestring):
-            key_filenames = [ key_filename ]
+            key_filenames = [key_filename]
         else:
             key_filenames = key_filename
 
-        self._auth(username, password, key_filenames, allow_agent, look_for_keys)
+        self._auth(username, password,
+                   key_filenames, allow_agent, look_for_keys)
 
-        self._connected = True # there was no error authenticating
+        self._connected = True  # there was no error authenticating
 
         c = self._channel = self._transport.open_session()
         c.set_name("netconf-subsystem")
-        try: c.invoke_subsystem("netconf")
+        try:
+            c.invoke_subsystem("netconf")
         except paramiko.SSHException as e:
-          logger.info("%s (subsystem request rejected)", e)
-          # if a ssh server implementation does not have subsystem support
-          # (dropbear for instance) then fallback to a remote command
-          # invocation. The server side must have netconf in the SEARCH PATH
-          # to allow the communication to work.
-          c = self._channel = self._transport.open_session()
-          c.set_name("netconf-command")
-          c.exec_command("netconf")
+            logger.info("%s (subsystem request rejected)", e)
+            # if a ssh server implementation does not have subsystem support
+            # (dropbear for instance) then fallback to a remote command
+            # invocation. The server side must have netconf in the SEARCH PATH
+            # to allow the communication to work.
+            c = self._channel = self._transport.open_session()
+            c.set_name("netconf-command")
+            c.exec_command("netconf")
 
         self._post_connect()
 
@@ -372,7 +395,7 @@ class SSHSession(Session):
                 try:
                     key = cls.from_private_key_file(key_filename, password)
                     logger.debug("Trying key %s from %s" %
-                              (hexlify(key.get_fingerprint()), key_filename))
+                                (hexlify(key.get_fingerprint()), key_filename))
                     self._transport.auth_publickey(username, key)
                     return
                 except Exception as e:
@@ -410,7 +433,7 @@ class SSHSession(Session):
             try:
                 key = cls.from_private_key_file(filename, password)
                 logger.debug("Trying discovered key %s in %s" %
-                          (hexlify(key.get_fingerprint()), filename))
+                            (hexlify(key.get_fingerprint()), filename))
                 self._transport.auth_publickey(username, key)
                 return
             except Exception as e:
@@ -435,7 +458,8 @@ class SSHSession(Session):
         chan = self._channel
         q = self._q
 
-        def start_delim(data_len): return '\n#%s\n'%(data_len)
+        def start_delim(data_len):
+            return '\n#%s\n' % (data_len)
 
         try:
             while True:
@@ -455,43 +479,62 @@ class SSHSession(Session):
                     if data:
                         self._buffer.write(data)
                         if self._server_capabilities:
-                            if 'urn:ietf:params:netconf:base:1.1' in self._server_capabilities and 'urn:ietf:params:netconf:base:1.1' in self._client_capabilities: self._parse11()
-                            elif 'urn:ietf:params:netconf:base:1.0' in self._server_capabilities or 'urn:ietf:params:netconf:base:1.0' in self._client_capabilities: self._parse10()
-                            else: raise Exception
-                        else: self._parse10() # HELLO msg uses EOM markers.
+                            if ('urn:ietf:params:netconf:base:1.1'
+                                    in self._server_capabilities and
+                                'urn:ietf:params:netconf:base:1.1'
+                                    in self._client_capabilities):
+                                self._parse11()
+                            elif ('urn:ietf:params:netconf:base:1.0'
+                                    in self._server_capabilities or
+                                  'urn:ietf:params:netconf:base:1.0'
+                                    in self._client_capabilities):
+                                self._parse10()
+                            else:
+                                raise Exception
+                        else:
+                            self._parse10()  # HELLO msg uses EOM markers.
                     else:
                         raise SessionCloseError(self._buffer.getvalue())
                 if not q.empty() and chan.send_ready():
                     data = q.get()
                     try:
                         # send a HELLO msg using v1.0 EOM markers.
-                        validated_element(data, tags='{urn:ietf:params:xml:ns:netconf:base:1.0}hello')
-                        data = "%s%s"%(data, MSG_DELIM)
+                        validated_element(
+                            data, tags='{urn:ietf:params:xml:ns:netconf:base:1.0}hello')
+                        data = "%s%s" % (data, MSG_DELIM)
                     except XMLError:
                         # this is not a HELLO msg
                         # we publish v1.1 support
-                        if 'urn:ietf:params:netconf:base:1.1' in self._client_capabilities:
+                        if ('urn:ietf:params:netconf:base:1.1'
+                                in self._client_capabilities):
                             if self._server_capabilities:
-                                if 'urn:ietf:params:netconf:base:1.1' in self._server_capabilities:
+                                if ('urn:ietf:params:netconf:base:1.1'
+                                        in self._server_capabilities):
                                     # send using v1.1 chunked framing
-                                    data = "%s%s%s"%(start_delim(len(data)), data, END_DELIM)
-                                elif 'urn:ietf:params:netconf:base:1.0' in self._server_capabilities:
+                                    data = "%s%s%s" % (
+                                        start_delim(len(data)), data, END_DELIM)
+                                elif ('urn:ietf:params:netconf:base:1.0'
+                                        in self._server_capabilities):
                                     # send using v1.0 EOM markers
-                                    data = "%s%s"%(data, MSG_DELIM)
-                                else: raise Exception
+                                    data = "%s%s" % (data, MSG_DELIM)
+                                else:
+                                    raise Exception
                             else:
-                                logger.debug('HELLO msg was sent, but server capabilities are still not known')
+                                logger.debug(
+                                    'HELLO msg was sent, but server \
+                                    capabilities are still not known')
                                 raise Exception
                         # we publish only v1.0 support
                         else:
                             # send using v1.0 EOM markers
-                            data = "%s%s"%(data, MSG_DELIM)
+                            data = "%s%s" % (data, MSG_DELIM)
                     finally:
                         logger.debug("Sending: %s", data)
                         while data:
                             n = chan.send(data)
                             if n <= 0:
-                                raise SessionCloseError(self._buffer.getvalue(), data)
+                                raise SessionCloseError(
+                                    self._buffer.getvalue(), data)
                             data = data[n:]
         except Exception as e:
             logger.debug("Broke out of main loop, error=%r", e)
@@ -500,5 +543,9 @@ class SSHSession(Session):
 
     @property
     def transport(self):
-        "Underlying `paramiko.Transport <http://www.lag.net/paramiko/docs/paramiko.Transport-class.html>`_ object. This makes it possible to call methods like :meth:`~paramiko.Transport.set_keepalive` on it."
+        """Underlying `paramiko.Transport
+        <http://www.lag.net/paramiko/docs/paramiko.Transport-class.html>`_
+        object. This makes it possible to call methods like
+        :meth:`~paramiko.Transport.set_keepalive` on it.
+        """
         return self._transport
